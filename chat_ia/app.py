@@ -4,32 +4,53 @@ from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
 
-# System Prompt estricto: Obliga al modelo a responder de forma directa y sin rodeos
 SYSTEM_PROMPT = (
-    "Eres J.A.R.V.I.S., un sistema operativo inteligente. "
-    "Responde SIEMPRE de forma extremadamente concisa, directa y al grano en español. "
-    "No generes explicaciones largas ni contexto innecesario."
+    "Eres J.A.R.V.I.S., un sistema operativo inteligente de élite. "
+    "Responde SIEMPRE de forma extremadamente concisa, directa y al grano en español."
 )
+
+# Memoria temporal de correcciones de usuario (Feedback real)
+HISTORIAL_FEEDBACK = []
 
 
 @app.route("/")
 def home():
-  # Renderiza la plantilla principal buscando index.html en la misma carpeta
   return render_template("index.html")
 
 
 @app.route("/chat", methods=["POST"])
 def chat():
   data = request.json
-  mensaje_usuario = data.get("mensaje", "")
+  mensaje_usuario = data.get("mensaje", "").strip()
   temperatura = float(data.get("temperature", 0.2))
+  feedback_previo = data.get("feedback", None)
 
-  prompt_completo = (
-      f"{SYSTEM_PROMPT}\n\nUsuario: {mensaje_usuario}\nJ.A.R.V.I.S.:"
-  )
+  # Si el usuario envió un feedback de corrección, lo guardamos en memoria para calibrar el tono
+  if feedback_previo:
+    HISTORIAL_FEEDBACK.append(feedback_previo)
+    return jsonify({
+        "respuesta": "Feedback registrado y guardado en los registros del núcleo."
+    })
+
+  # Optimización de velocidad para saludos o preguntas ultra simples (respuesta inmediata local)
+  mensaje_lower = mensaje_usuario.lower()
+  if mensaje_lower in ["hola", "buenas", "hi"]:
+    return jsonify(
+        {"respuesta": "Sistemas en línea y operativos. ¿Qué orden ejecutamos?"}
+    )
+  if mensaje_lower in ["como estas?", "cómo estás?", "todo bien?"]:
+    return jsonify({"respuesta": "Funcionando al 100% de capacidad, señor."})
+
+  # Construcción del prompt integrando correcciones previas si las hay
+  contexto_feedback = ""
+  if HISTORIAL_FEEDBACK:
+    contexto_feedback = (
+        f"\n[Correcciones previas a recordar]: {str(HISTORIAL_FEEDBACK[-3:])}"
+    )
+
+  prompt_completo = f"{SYSTEM_PROMPT}{contexto_feedback}\n\nUsuario: {mensaje_usuario}\nJ.A.R.V.I.S.:"
 
   try:
-    # Solicitud al núcleo local de Ollama
     res = requests.post(
         "http://localhost:11434/api/generate",
         json={
@@ -39,7 +60,7 @@ def chat():
             "options": {
                 "temperature": temperatura,
                 "top_p": 0.8,
-                "num_predict": 40,  # Límite bajo de tokens para forzar velocidad máxima de respuesta
+                "num_predict": 45,  # Forzar corte rápido de tokens para que no demore
             },
         },
     )
@@ -47,12 +68,11 @@ def chat():
     if res.status_code == 200:
       respuesta_ia = res.json().get("response", "Sin respuesta.")
 
-      # Limpieza estricta de las etiquetas de razonamiento interno de DeepSeek
+      # Limpieza de etiquetas de pensamiento
       if "<think>" in respuesta_ia and "</think>" in respuesta_ia:
         partes = respuesta_ia.split("</think>")
         respuesta_ia = partes[-1].strip()
 
-      # Módulo opcional de ejecución rápida de comandos de Python por chat
       if mensaje_usuario.lower().startswith("ejecuta python:"):
         codigo = mensaje_usuario.replace("ejecuta python:", "").strip()
         try:
@@ -62,13 +82,13 @@ def chat():
               timeout=3,
               text=True,
           )
-          respuesta_ia = f"Ejecutado con éxito:\n{resultado_cmd}"
+          respuesta_ia = f"Ejecutado:\n{resultado_cmd}"
         except Exception as ex:
-          respuesta_ia = f"Error de ejecución: {str(ex)}"
+          respuesta_ia = f"Error: {str(ex)}"
     else:
-      respuesta_ia = "Error en el núcleo de procesamiento."
+      respuesta_ia = "Error en el núcleo Ollama."
   except Exception as e:
-    respuesta_ia = f"Falla crítica de enlace: {str(e)}"
+    respuesta_ia = f"Falla de red: {str(e)}"
 
   return jsonify({"respuesta": respuesta_ia})
 

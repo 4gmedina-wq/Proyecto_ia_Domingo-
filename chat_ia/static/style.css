@@ -3,7 +3,7 @@
     --bg-panel: #0f172a;
     --bg-card: #1e293b;
     --accent: #00f0ff;
-    --accent-glow: rgba(0, 240, 255, 0.3);
+    --accent-glow: rgba(0, 240, 255, 0.4);
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
     --border: #334155;
@@ -27,36 +27,44 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg-main
 .voice-toggle { background: transparent; border: 1px solid var(--accent); color: var(--accent); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold; width: 100%; transition: all 0.3s; }
 .voice-toggle.active { background: var(--accent); color: var(--bg-main); box-shadow: 0 0 15px var(--accent-glow); }
 
-.chat-main { display: flex; flex-direction: column; height: 100%; background: var(--bg-main); position: relative; }
-.chat-header { background: var(--bg-card); padding: 18px 25px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.chat-main { display: flex; flex-direction: column; height: 100vh; max-height: 94vh; background: var(--bg-main); position: relative; overflow: hidden; }
+.chat-header { background: var(--bg-card); padding: 15px 25px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
 
-.status-indicator { display: flex; align-items: center; gap: 10px; font-size: 0.95rem; font-weight: 600; }
-.dot { width: 12px; height: 12px; background: var(--success); border-radius: 50%; box-shadow: 0 0 12px var(--success); animation: pulse-dot 2s infinite; }
+.status-indicator { display: flex; align-items: center; gap: 12px; font-size: 0.95rem; font-weight: 600; }
 
-.chat-messages { flex: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; scroll-behavior: smooth; }
+/* Animación HTML5: Arc Reactor Giratorio */
+.arc-reactor { width: 22px; height: 22px; border: 2px solid var(--border); border-top: 2px solid var(--accent); border-radius: 50%; animation: spin 1.5s linear infinite; box-shadow: 0 0 10px var(--accent-glow); position: relative; }
+.core-ring { position: absolute; top: 4px; left: 4px; width: 10px; height: 10px; background: var(--accent); border-radius: 50%; animation: pulse-core 1s ease-in-out infinite alternate; }
+
+/* Contenedor de mensajes con altura flexible estricta para que la barra nunca desaparezca */
+.chat-messages { flex: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; scroll-behavior: smooth; min-height: 0; }
 .message { max-width: 80%; padding: 15px 20px; border-radius: 14px; font-size: 0.95rem; line-height: 1.6; word-wrap: break-word; animation: fadeIn 0.3s ease; position: relative; }
 .user { background: linear-gradient(135deg, #0284c7, #0369a1); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
 .assistant { background: var(--bg-card); color: var(--text-main); align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid var(--border); }
 
-/* Metadatos de respuesta (Cronómetro y Feedback) */
-.meta-info { font-size: 0.75rem; color: var(--text-muted); margin-top: 6px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px; }
-.feedback-container button { background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 2px 6px; transition: transform 0.1s; }
-.feedback-container button:hover { transform: scale(1.2); }
+.meta-info { font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 6px; }
+.feedback-actions button { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; transition: all 0.2s; }
+.feedback-actions button:hover { border-color: var(--accent); color: var(--accent); }
 
-.loading { font-style: italic; color: var(--accent); font-size: 0.85rem; padding-left: 25px; display: none; align-items: center; gap: 8px; margin-bottom: 10px; }
-.loading::after { content: ''; width: 12px; height: 12px; border: 2px solid var(--accent); border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; }
+/* Caja de realimentación (Feedback interactivo modificable) */
+.feedback-input-box { margin-top: 8px; display: none; gap: 6px; }
+.feedback-input-box input { flex: 1; background: var(--bg-main); border: 1px solid var(--border); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; }
+.feedback-input-box button { background: var(--accent); color: var(--bg-main); border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.75rem; }
 
-.chat-input-area { padding: 20px; background: var(--bg-card); border-top: 1px solid var(--border); display: flex; gap: 12px; align-items: center; }
-textarea { flex: 1; background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 14px; color: var(--text-main); font-size: 0.95rem; resize: none; height: 52px; outline: none; }
+.loading { font-style: italic; color: var(--accent); font-size: 0.85rem; padding-left: 25px; display: none; align-items: center; gap: 8px; margin-bottom: 10px; flex-shrink: 0; }
+
+/* Área de Input estricta al fondo para evitar que desaparezca */
+.chat-input-area { padding: 15px 25px; background: var(--bg-card); border-top: 1px solid var(--border); display: flex; gap: 12px; align-items: center; flex-shrink: 0; }
+textarea { flex: 1; background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 12px; color: var(--text-main); font-size: 0.95rem; resize: none; height: 48px; outline: none; }
 textarea:focus { border-color: var(--accent); box-shadow: 0 0 10px var(--accent-glow); }
 
-button.action-btn { background: var(--accent); color: var(--bg-main); border: none; padding: 0 26px; height: 52px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: all 0.2s; font-size: 0.95rem; }
+button.action-btn { background: var(--accent); color: var(--bg-main); border: none; padding: 0 24px; height: 48px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: all 0.2s; font-size: 0.95rem; }
 button.action-btn:hover { box-shadow: 0 0 20px var(--accent-glow); }
 
-button.mic-btn { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 52px; height: 52px; border-radius: 10px; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 1.3rem; }
+button.mic-btn { background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); width: 48px; height: 48px; border-radius: 10px; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; }
 button.mic-btn.listening { background: var(--danger); border-color: var(--danger); color: white; animation: pulse-mic 1.2s infinite; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
-@keyframes pulse-dot { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+@keyframes pulse-core { from { transform: scale(0.8); opacity: 0.6; } to { transform: scale(1.2); opacity: 1; } }
 @keyframes pulse-mic { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
