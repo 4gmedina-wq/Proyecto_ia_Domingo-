@@ -1,0 +1,12 @@
+{
+  "project": "JARVIS Local Assistant",
+  "version": "2.0-fast",
+  "hardware": "Android / Termux Server",
+  "model": "deepseek-r1:1.5b",
+  "backend": "Flask",
+  "settings": {
+    "default_temperature": 0.2,
+    "max_tokens": 70,
+    "port": 5000
+  }
+}

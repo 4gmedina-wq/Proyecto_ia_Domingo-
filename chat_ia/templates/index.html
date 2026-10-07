@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J.A.R.V.I.S. - Core Óptimo y Rápido</title>
+    <!-- Enlace a la hoja de estilos externa CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Panel Lateral de Configuración -->
+        <aside class="sidebar">
+            <h2>⚙ Parámetros IA</h2>
+            <div class="control-group">
+                <label>Temperatura: <span id="tempVal" style="color:var(--accent);">0.2</span></label>
+                <input type="range" id="temperature" min="0.1" max="0.8" step="0.1" value="0.2" oninput="document.getElementById('tempVal').innerText=this.value">
+            </div>
+            <div class="control-group">
+                <label>Modelo Activo:</label>
+                <input type="text" value="deepseek-r1:1.5b" disabled>
+            </div>
+            <h2>🔊 Módulo de Voz</h2>
+            <div class="voice-status-box">
+                <button class="voice-toggle active" id="voiceToggle" onclick="toggleVoz()">Voz: Activada</button>
+            </div>
+        </aside>
+
+        <!-- Sección Principal de Conversación -->
+        <main class="chat-main">
+            <header class="chat-header">
+                <div class="status-indicator">
+                    <div class="dot"></div>
+                    <span>J.A.R.V.I.S. // Alta Velocidad & Feedback Activo</span>
+                </div>
+            </header>
+
+            <div class="chat-messages" id="chatMessages">
+                <div class="message assistant">Sistemas en línea. A su disposición, señor.</div>
+            </div>
+
+            <div class="loading" id="loadingIndicator">
+                <span>Procesando instrucción...</span>
+            </div>
+
+            <div class="chat-input-area">
+                <button class="mic-btn" id="micBtn" onclick="toggleMicrofono()" title="Hablar">🎙️</button>
+                <textarea id="userInput" placeholder="Escribe tu orden o comando..." rows="1" onkeydown="handleKey(event)"></textarea>
+                <button class="action-btn" onclick="enviarMensaje()">Enviar</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Enlace al archivo JavaScript externo -->
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
