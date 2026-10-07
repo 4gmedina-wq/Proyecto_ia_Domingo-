@@ -1,65 +1,238 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>J.A.R.V.I.S. - Core Dinámico</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta name="theme-color" content="#0a0e27">
+    <title>J.A.R.V.I.S. | Asistente Inteligente</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="app-container">
-        <!-- Panel Lateral -->
-        <aside class="sidebar">
-            <h2>⚙ Parámetros IA</h2>
-            <div class="control-group">
-                <label>Temperatura: <span id="tempVal" style="color:var(--accent);">0.2</span></label>
-                <input type="range" id="temperature" min="0.1" max="1.0" step="0.1" value="0.2" oninput="document.getElementById('tempVal').innerText=this.value">
-            </div>
-            <div class="control-group">
-                <label>Modelo:</label>
-                <input type="text" value="deepseek-r1:1.5b" disabled>
-            </div>
-
-            <h2>🔊 Voz Interactiva</h2>
-            <div class="voice-status-box">
-                <button class="voice-toggle active" id="voiceToggle" onclick="toggleVoz()">Voz: Activada</button>
-                <div class="control-group" style="margin-top: 10px;">
-                    <label>Voz del Sistema:</label>
-                    <select id="voiceSelect" style="background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); padding: 6px; border-radius: 6px; font-size: 0.8rem;"></select>
-                </div>
-            </div>
-        </aside>
-
-        <!-- Sección Principal -->
-        <main class="chat-main">
-            <header class="chat-header">
-                <div class="status-indicator">
-                    <!-- Animación HTML5: Núcleo Arc Reactor Cibernético en movimiento -->
-                    <div class="arc-reactor">
-                        <div class="core-ring"></div>
-                    </div>
-                    <span>J.A.R.V.I.S. // Core Activo</span>
-                </div>
-            </header>
-
-            <!-- Contenedor de mensajes con scroll independiente y altura fija controlada -->
-            <div class="chat-messages" id="chatMessages">
-                <div class="message assistant">Sistemas en línea. Listo, señor.</div>
-            </div>
-
-            <div class="loading" id="loadingIndicator">
-                <span>Procesando instrucción...</span>
-            </div>
-
-            <!-- Área de input fija que nunca desaparecerá -->
-            <div class="chat-input-area">
-                <button class="mic-btn" id="micBtn" onclick="toggleMicrofono()" title="Hablar">🎙️</button>
-                <textarea id="userInput" placeholder="Escribe tu orden o comando..." rows="1" onkeydown="handleKey(event)"></textarea>
-                <button class="action-btn" onclick="enviarMensaje()">Enviar</button>
-            </div>
-        </main>
+    <!-- Fondo animado -->
+    <div class="bg-animation">
+        <div class="grid-lines"></div>
+        <div class="floating-particles"></div>
     </div>
 
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <!-- Contenedor Principal -->
+    <div class="jarvis-container">
+        
+        <!-- Panel Superior - Estado del Sistema -->
+        <header class="system-header">
+            <div class="logo-section">
+                <div class="arc-reactor" id="arcReactor">
+                    <div class="reactor-core"></div>
+                    <div class="reactor-ring ring-1"></div>
+                    <div class="reactor-ring ring-2"></div>
+                    <div class="reactor-ring ring-3"></div>
+                    <div class="reactor-glow"></div>
+                </div>
+                <div class="system-info">
+                    <h1 class="system-title">J.A.R.V.I.S.</h1>
+                    <p class="system-subtitle">Just A Rather Very Intelligent System</p>
+                    <div class="system-status">
+                        <span class="status-indicator online"></span>
+                        <span id="systemStatusText">Sistema en línea</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="system-metrics">
+                <div class="metric">
+                    <span class="metric-label">Modelo</span>
+                    <span class="metric-value" id="modelName">qwen2.5:1.5b</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Latencia</span>
+                    <span class="metric-value" id="latency">0ms</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Estado</span>
+                    <span class="metric-value" id="connectionStatus">Conectado</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Área de Chat -->
+        <main class="chat-container">
+            <div class="chat-messages" id="chatMessages">
+                <!-- Mensaje de bienvenida -->
+                <div class="message assistant-message">
+                    <div class="message-avatar">
+                        <div class="avatar-icon">🤖</div>
+                    </div>
+                    <div class="message-content">
+                        <div class="message-header">
+                            <span class="sender-name">J.A.R.V.I.S.</span>
+                            <span class="message-time" id="welcomeTime"></span>
+                        </div>
+                        <div class="message-text">
+                            Buenas. Soy J.A.R.V.I.S., su asistente personal avanzado. 
+                            Estoy listo para ayudarle. Puede hablarme por voz o escribir su consulta.
+                        </div>
+                        <div class="message-actions">
+                            <button class="action-btn" onclick="speakText(this)" title="Escuchar">
+                                🔊
+                            </button>
+                            <button class="action-btn" onclick="copyMessage(this)" title="Copiar">
+                                📋
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Indicador de escritura -->
+            <div class="typing-indicator" id="typingIndicator" style="display: none;">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <span class="typing-text">J.A.R.V.I.S. está procesando...</span>
+            </div>
+        </main>
+
+        <!-- Visualizador de Audio -->
+        <div class="voice-visualizer" id="voiceVisualizer">
+            <div class="visualizer-bar"></div>
+            <div class="visualizer-bar"></div>
+            <div class="visualizer-bar"></div>
+            <div class="visualizer-bar"></div>
+            <div class="visualizer-bar"></div>
+            <div class="visualizer-bar"></div>
+            <div class="visualizer-bar"></div>
+            <div class="visualizer-bar"></div>
+        </div>
+
+        <!-- Panel de Control de Voz -->
+        <div class="voice-control-panel" id="voiceControlPanel">
+            <div class="voice-status" id="voiceStatus">
+                <span class="voice-icon">🎤</span>
+                <span class="voice-text">Micrófono inactivo</span>
+            </div>
+            <button class="voice-toggle-btn" id="voiceToggleBtn" onclick="toggleVoiceRecognition()">
+                <span class="btn-icon">️</span>
+                <span class="btn-text">Activar Voz</span>
+            </button>
+        </div>
+
+        <!-- Área de Entrada -->
+        <footer class="input-container">
+            <div class="input-wrapper">
+                <button class="voice-btn" id="voiceInputBtn" onclick="startVoiceInput()" title="Hablar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                        <line x1="12" y1="19" x2="12" y2="23"></line>
+                        <line x1="8" y1="23" x2="16" y2="23"></line>
+                    </svg>
+                </button>
+                
+                <input 
+                    type="text" 
+                    id="userInput" 
+                    class="chat-input" 
+                    placeholder="Escribe tu mensaje o presiona el micrófono para hablar..."
+                    autocomplete="off"
+                    onkeypress="handleKeyPress(event)"
+                >
+                
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Enviar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="input-hints">
+                <span class="hint">Presiona Enter para enviar</span>
+                <span class="hint">•</span>
+                <span class="hint">Shift + Enter para nueva línea</span>
+            </div>
+        </footer>
+
+        <!-- Panel de Configuración Rápida -->
+        <div class="settings-panel" id="settingsPanel">
+            <button class="settings-toggle" onclick="toggleSettings()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+            </button>
+            
+            <div class="settings-content" id="settingsContent">
+                <h3>Configuración</h3>
+                
+                <div class="setting-group">
+                    <label>Temperatura del Modelo</label>
+                    <input type="range" id="temperatureSlider" min="0" max="1" step="0.1" value="0.7">
+                    <span id="temperatureValue">0.7</span>
+                </div>
+                
+                <div class="setting-group">
+                    <label>Voz de Salida</label>
+                    <select id="voiceSelect">
+                        <option value="">Cargando voces...</option>
+                    </select>
+                </div>
+                
+                <div class="setting-group">
+                    <label>Idioma de Reconocimiento</label>
+                    <select id="languageSelect">
+                        <option value="es-ES">Español (España)</option>
+                        <option value="es-MX">Español (México)</option>
+                        <option value="en-US">English (US)</option>
+                    </select>
+                </div>
+                
+                <div class="setting-group checkbox-group">
+                    <input type="checkbox" id="autoSpeak" checked>
+                    <label for="autoSpeak">Leer respuestas en voz alta</label>
+                </div>
+                
+                <div class="setting-group checkbox-group">
+                    <input type="checkbox" id="continuousListening">
+                    <label for="continuousListening">Escucha continua</label>
+                </div>
+                
+                <button class="clear-btn" onclick="clearChat()">
+                    🗑️ Limpiar Historial
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modal de Feedback -->
+    <div class="modal" id="feedbackModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Feedback</h3>
+                <button class="modal-close" onclick="closeFeedbackModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>¿Te fue útil esta respuesta?</p>
+                <div class="feedback-buttons">
+                    <button class="feedback-btn positive" onclick="submitFeedback('positive')">
+                        👍 Sí, muy útil
+                    </button>
+                    <button class="feedback-btn negative" onclick="submitFeedback('negative')">
+                        👎 Necesita mejora
+                    </button>
+                </div>
+                <textarea 
+                    id="correctionText" 
+                    placeholder="¿Qué podría mejorar? (opcional)"
+                    rows="3"
+                ></textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notificaciones Toast -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="script.js"></script>
 </body>
 </html>

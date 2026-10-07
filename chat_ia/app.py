@@ -1,105 +1,147 @@
-from datetime import datetime
-import subprocess
+from flask import Flask, render_template, request, jsonify, Response
+from flask_cors import CORS
 import requests
-from flask import Flask, jsonify, render_template, request
+import json
+import os
+from datetime import datetime
+import threading
 
 app = Flask(__name__)
+CORS(app)
 
-# Obtener la fecha y hora exacta del sistema de forma dinámica
-fecha_actual = datetime.now().strftime("%A, %d de %B de %Y")
-hora_actual = datetime.now().strftime("%H:%M")
+# Configuración
+OLLAMA_API = "http://localhost:11434/api/generate"
+MODEL = "qwen2.5:1.5b"
 
-SYSTEM_PROMPT = (
-    f"Eres Qwen, un sistema operativo inteligente de élite. "
-    f"La fecha actual es {fecha_actual} y la hora es {hora_actual}. "
-    "Respondes siempre de forma concisa, educada, culta y directa al grano en español. "
-   
-)
+# Almacenamiento de correcciones y feedback
+feedback_db = []
+chat_history = []
 
-# Memoria temporal para guardar el feedback real de correcciones
-HISTORIAL_FEEDBACK = []
-
-
-@app.route("/")
-def home():
-  return render_template("index.html")
-
-
-@app.route("/chat", methods=["POST"])
-def chat():
-  data = request.json
-  mensaje_usuario = data.get("mensaje", "").strip()
-  temperatura = float(data.get("temperature", 0.2))
-  feedback_previo = data.get("feedback", None)
-
-  # Registrar correcciones de usuario en memoria
-  if feedback_previo:
-    HISTORIAL_FEEDBACK.append(feedback_previo)
-    return jsonify({
-        "respuesta": "Feedback registrado y guardado en los registros del núcleo."
-    })
-
-  # Respuestas instantáneas locales para saludos o preguntas ultra simples
-  mensaje_lower = mensaje_usuario.lower()
-  if mensaje_lower in ["hola", "buenas", "hi"]:
-    return jsonify(
-        {"respuesta": "Sistemas operativos en línea. ¿Qué orden ejecutamos?"}
-    )
-  if mensaje_lower in ["como estas?", "cómo estás?", "todo bien?"]:
-    return jsonify({"respuesta": "Funcionando al 100% de capacidad, señor."})
-
-  # Construcción del prompt con memoria de correcciones previas
-  contexto_feedback = ""
-  if HISTORIAL_FEEDBACK:
-    contexto_feedback = (
-        f"\n[Correcciones previas a recordar]: {str(HISTORIAL_FEEDBACK[-3:])}"
-    )
-
-  prompt_completo = f"{SYSTEM_PROMPT}{contexto_feedback}\n\nUsuario: {mensaje_usuario}\nJ.A.R.V.I.S.:"
-
-  try:
-    res = requests.post(
-        "http://localhost:11434/api/generate",
-        json={
-            "model": "qwen2.5:1.5b",  # Modelo rápido y fluido optimizado para móviles
-            "prompt": prompt_completo,
+def generate_ollama_response(prompt, temperature=0.7):
+    """Genera respuesta usando Ollama local"""
+    try:
+        payload = {
+            "model": MODEL,
+            "prompt": prompt,
             "stream": False,
             "options": {
-                "temperature": temperatura,
+                "temperature": temperature,
                 "top_p": 0.9,
-                "num_predict": 120,  # Margen adecuado para que Qwen responda con fluidez
-            },
-        },
-    )
+                "top_k": 40
+            }
+        }
+        
+        response = requests.post(OLLAMA_API, json=payload, timeout=120)
+        response.raise_for_status()
+        
+        return response.json().get('response', 'Lo siento, no pude procesar tu solicitud.')
+    
+    except requests.exceptions.Timeout:
+        return "La solicitud tardó demasiado. Por favor, intenta de nuevo."
+    except requests.exceptions.ConnectionError:
+        return "Error de conexión con Ollama. Verifica que esté ejecutándose."
+    except Exception as e:
+        return f"Error: {str(e)}"
 
-    if res.status_code == 200:
-      respuesta_ia = res.json().get("response", "Sin respuesta.")
+@app.route('/')
+def index():
+    """Sirve la interfaz principal"""
+    return render_template('index.html')
 
-      # Limpieza preventiva por si el modelo genera etiquetas internas
-      if "<think>" in respuesta_ia and "</think>" in respuesta_ia:
-        partes = respuesta_ia.split("</think>")
-        respuesta_ia = partes[-1].strip()
+@app.route('/api/chat', methods=['POST'])
+def chat():
+    """Endpoint principal de chat"""
+    data = request.json
+    user_message = data.get('message', '')
+    temperature = float(data.get('temperature', 0.7))
+    
+    if not user_message.strip():
+        return jsonify({'error': 'Mensaje vacío'}), 400
+    
+    # Construir contexto con historial reciente
+    context = f"""Eres J.A.R.V.I.S., un asistente de inteligencia artificial avanzado, 
+    eficiente y profesional. Responde de manera clara, concisa y en español.
+    
+    Usuario: {user_message}
+    J.A.R.V.I.S.:"""
+    
+    # Generar respuesta
+    response_text = generate_ollama_response(context, temperature)
+    
+    # Guardar en historial
+    chat_entry = {
+        'timestamp': datetime.now().isoformat(),
+        'user': user_message,
+        'assistant': response_text
+    }
+    chat_history.append(chat_entry)
+    
+    # Mantener solo últimos 50 mensajes
+    if len(chat_history) > 50:
+        chat_history.pop(0)
+    
+    return jsonify({
+        'response': response_text,
+        'timestamp': chat_entry['timestamp'],
+        'model': MODEL
+    })
 
-      # Módulo para ejecutar comandos de Python mediante chat si se solicita
-      if mensaje_usuario.lower().startswith("ejecuta python:"):
-        codigo = mensaje_usuario.replace("ejecuta python:", "").strip()
-        try:
-          resultado_cmd = subprocess.check_output(
-              ["python", "-c", codigo],
-              stderr=subprocess.STDOUT,
-              timeout=3,
-              text=True,
-          )
-          respuesta_ia = f"Ejecutado con éxito:\n{resultado_cmd}"
-        except Exception as ex:
-          respuesta_ia = f"Error al ejecutar código: {str(ex)}"
-    else:
-      respuesta_ia = "Error crítico en el núcleo de Ollama."
-  except Exception as e:
-    respuesta_ia = f"Falla de enlace con el servidor: {str(e)}"
+@app.route('/api/feedback', methods=['POST'])
+def feedback():
+    """Sistema de feedback y correcciones"""
+    data = request.json
+    feedback_entry = {
+        'timestamp': datetime.now().isoformat(),
+        'message': data.get('message', ''),
+        'response': data.get('response', ''),
+        'rating': data.get('rating', 'neutral'),  # 'positive', 'negative', 'neutral'
+        'correction': data.get('correction', '')
+    }
+    
+    feedback_db.append(feedback_entry)
+    
+    # Guardar en archivo para persistencia
+    try:
+        with open('feedback_log.json', 'a', encoding='utf-8') as f:
+            f.write(json.dumps(feedback_entry, ensure_ascii=False) + '\n')
+    except Exception as e:
+        print(f"Error guardando feedback: {e}")
+    
+    return jsonify({'status': 'success', 'message': 'Feedback registrado'})
 
-  return jsonify({"respuesta": respuesta_ia})
+@app.route('/api/history', methods=['GET'])
+def get_history():
+    """Obtener historial de chat"""
+    return jsonify({
+        'history': chat_history[-20:],  # Últimos 20 mensajes
+        'total': len(chat_history)
+    })
 
+@app.route('/api/clear-history', methods=['POST'])
+def clear_history():
+    """Limpiar historial"""
+    chat_history.clear()
+    return jsonify({'status': 'success', 'message': 'Historial limpiado'})
 
-if __name__ == "__main__":
-  app.run(host="0.0.0.0", port=5000)
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Verificar estado del sistema"""
+    try:
+        # Verificar Ollama
+        ollama_status = requests.get("http://localhost:11434/api/tags", timeout=5)
+        ollama_ok = ollama_status.status_code == 200
+    except:
+        ollama_ok = False
+    
+    return jsonify({
+        'status': 'online',
+        'ollama': 'connected' if ollama_ok else 'disconnected',
+        'model': MODEL,
+        'timestamp': datetime.now().isoformat()
+    })
+
+if __name__ == '__main__':
+    print("🚀 Iniciando J.A.R.V.I.S. Server...")
+    print(f"📡 Modelo: {MODEL}")
+    print(" Servidor accesible en: http://0.0.0.0:5000")
+    app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
